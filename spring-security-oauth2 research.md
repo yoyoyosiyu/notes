@@ -2,6 +2,18 @@
 
 [![N|Solid](https://cldup.com/dTxpPi9lDf.thumb.png)](https://nodesource.com/products/nsolid)
 
+这篇文章是研究Spring Security OAuth 源代码的手稿
+
+源码的地址
+
+  - spring security: [https://github.com/spring-projects/spring-security](https://github.com/spring-projects/spring-security)
+  - spring security oauth: [https://github.com/spring-projects/spring-security-oauth](https://github.com/spring-projects/spring-security-oauth)
+
+本文的Github地址
+
+  https://github.com/yoyoyosiyu/notes/blob/master/spring-security-oauth2 research.md
+
+
 Dillinger is a cloud-enabled, mobile-ready, offline-storage, AngularJS powered HTML5 Markdown editor.
 
   - Type some Markdown on the left
