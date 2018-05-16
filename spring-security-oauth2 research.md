@@ -10,8 +10,32 @@
   - spring security oauth: [https://github.com/spring-projects/spring-security-oauth](https://github.com/spring-projects/spring-security-oauth)
 
 本文的Github地址
+[https://github.com/yoyoyosiyu/notes/blob/master/spring-security-oauth2 research.md](https://github.com/yoyoyosiyu/notes/blob/master/spring-security-oauth2%20research.md "github 地址")
 
-  https://github.com/yoyoyosiyu/notes/blob/master/spring-security-oauth2 research.md
+# 代码入口
+
+- @EnableAuthorizationServer
+- @EnableOAuth2Client
+- @EnableResourceServer
+
+### @EnableAuthorizationServer
+
+代码的定义在：org/springframework/security/oauth2/config/annotation/web/configuration/EnableAuthorizationServer.java
+
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Import({AuthorizationServerEndpointsConfiguration.class, AuthorizationServerSecurityConfiguration.class})
+public @interface EnableAuthorizationServer {
+
+}
+```
+@EnableAuthorizationServer注解的定义通过@Import导入了两个重要的类：`AuthorizationServerSecurityConfiguration`和 [AuthorizationServerEndpointsConfiguration](#AuthorizationServerEndpointsConfiguration)
+
+### AuthorizationServerSecurityConfiguration
+<span id="AuthorizationServerEndpointsConfiguration">锚点</span>
+
 
 
 Dillinger is a cloud-enabled, mobile-ready, offline-storage, AngularJS powered HTML5 Markdown editor.
