@@ -34,7 +34,7 @@ public @interface EnableAuthorizationServer {
 @EnableAuthorizationServer注解的定义通过@Import导入了两个重要的类：`AuthorizationServerSecurityConfiguration`和 [AuthorizationServerEndpointsConfiguration](#AuthorizationServerEndpointsConfiguration)
 
 ### AuthorizationServerSecurityConfiguration
-<span id="AuthorizationServerEndpointsConfiguration">锚点</span>
+
 
 
 
@@ -189,6 +189,8 @@ MIT
 
 
 **Free Software, Hell Yeah!**
+
+<span id="AuthorizationServerEndpointsConfiguration"></span>
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
