@@ -193,7 +193,22 @@ org/springframework/security/oauth2/config/annotation/web/configurers/Authorizat
   - 如果allowFormAuthenticationForClients被设置为允许的话，那么允许... **（这里忘了怎么描述）**
   - 如果有TokenEndpointAuthenticationFilter过滤器的话，添加到 BasicAuthenticationFilter之前
   - 设置Access Denied 处理器
+  - 
+  
+SpringMVC源码总结（一）HandlerMapping和HandlerAdapter入门
+https://blog.csdn.net/zljjava/article/details/50414585
 
+HandlerMapping 详解
+https://www.cnblogs.com/dragonfei/p/6148625.html
+
+Spring自定义RequestMappingHandlerMapping避免PathVariable的性能低下
+https://www.jianshu.com/p/5574cb427140
+
+springmvc RequestMappingHandlerMapping初始化详解
+https://www.cnblogs.com/BINGJJFLY/p/7452717.html
+
+如何实例化requestmappinghandlermapping类
+https://zhidao.baidu.com/question/372438141876783604.html
 
 Dillinger is a cloud-enabled, mobile-ready, offline-storage, AngularJS powered HTML5 Markdown editor.
 
