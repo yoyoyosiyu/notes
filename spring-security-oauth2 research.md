@@ -93,19 +93,20 @@ AuthorizationServerSecurityConfiguration主要重载 configure(HttpSecurity http
   - /oauth/check_token 可以通过AuthorizationServerSecurityConfigurer来设置
 
 这里要理清几个类的关系
- - **AuthorizationServerSecurityConfiguration** 
- - **AuthorizationServerSecurityConfigurer** 
- - **AuthorizationServerConfigurer**
+ **AuthorizationServerSecurityConfiguration** 
+  -> **AuthorizationServerSecurityConfigurer** 
+    -> **AuthorizationServerConfigurer**
 
 类的名字看上去都非常的相似，要仔细辨认才能看出其中的不同。这里梳理一下他们的关系，对我们理解代码有很大的帮助。
-
-**AuthorizationServerSecurityConfiguration** 会创建**AuthorizationServerSecurityConfigurer**（configure(HttpSecurity http)方法中）实例，然后会将其作为**AuthorizationServerConfigurer**的configure方法的参数交给实例实例它进行配置。我们可以定义**AuthorizationServerConfigurer**的派生类，并且声明为Bean。那么**AuthorizationServerSecurityConfiguration** 可以通过@Autowired的方式拿到所有**AuthorizationServerConfigurer**类型（或派生类型）的Bean集合
-代码如下：
+**AuthorizationServerSecurityConfigurer**在**AuthorizationServerSecurityConfiguration**类的configure(HttpSecurity http)方法中创建，而**AuthorizationServerConfigurer**可以由我们的自己的项目定义，然后声明为Bean。**AuthorizationServerSecurityConfiguration** 会收集所有
+类型为**AuthorizationServerConfigurer**的Bean,下面的代码摘自**AuthorizationServerSecurityConfiguration**的定义
 ```java
     @Autowired
 	private List<AuthorizationServerConfigurer> configurers = Collections.emptyList();
 ```
-AuthorizationServerSecurityConfiguration:configure(AuthorizationServerSecurityConfigurer oauthServer)方法，
+**AuthorizationServerSecurityConfiguration**创建了**AuthorizationServerSecurityConfigurer**类之后，会调用configure(AuthorizationServerSecurityConfigurer oauthServer)
+方法，这个方法是**AuthorizationServerSecurityConfiguration**自己定义的方法，并不是**WebSecurityConfigurerAdapter**重载的方法，虽然看上去和其他的configure有点像。
+这个方法的作用很简单，就是逐个调用**AuthorizationServerConfigurer**（少Security单词，区分与**AuthorizationServerSecurityConfigurer**）的configure方法，并且将**AuthorizationServerSecurityConfigurer**实例通过参数传递给**AuthorizationServerConfigurer**处理。
 ```java
     protected void configure(AuthorizationServerSecurityConfigurer oauthServer) throws Exception {
 		for (AuthorizationServerConfigurer configurer : configurers) {
@@ -113,10 +114,11 @@ AuthorizationServerSecurityConfiguration:configure(AuthorizationServerSecurityCo
 		}
 	}
 ```
-这个方法是**AuthorizationServerSecurityConfiguration**自己定义的方法，并不是**WebSecurityConfigurerAdapter**重载的方法，虽然看上去和其他的configure有点像。
-这个方法的作用很简单，就如前我们所说，将**AuthorizationServerSecurityConfigurer**传递给**AuthorizationServerConfigurer**进行配置。
 
-在这之后，就可以将**AuthorizationServerSecurityConfigurer**应用到HttpSecurity上，如下的代码：
+这样我们就大致理清了这三者的关系
+**AuthorizationServerSecurityConfiguration** 通过自动连线的方式获得了所有已经注册了的**AuthorizationServerConfigurer**的Bean的列表，然后创建一个**AuthorizationServerSecurityConfigurer**
+然后将其交给每一个**AuthorizationServerConfigurer**处理，然后**AuthorizationServerConfigurer**会配置这个**AuthorizationServerSecurityConfigurer**对象，
+最后**AuthorizationServerSecurityConfiguration**会将**AuthorizationServerSecurityConfigurer**这个经过配置的对象交给HttpSecurity对象去处理,因为**AuthorizationServerSecurityConfigurer**派生自Spring Security的**SecurityConfigurerAdapter**类。
 ```java
     http.apply(configurer);
 ```
@@ -191,22 +193,36 @@ org/springframework/security/oauth2/config/annotation/web/configurers/Authorizat
   - 如果allowFormAuthenticationForClients被设置为允许的话，那么允许... **（这里忘了怎么描述）**
   - 如果有TokenEndpointAuthenticationFilter过滤器的话，添加到 BasicAuthenticationFilter之前
   - 设置Access Denied 处理器
-  - 
+   
   
-SpringMVC源码总结（一）HandlerMapping和HandlerAdapter入门
-https://blog.csdn.net/zljjava/article/details/50414585
+### @EnableAuthorizationServer构建的对象
+ - AuthorizationServerSecurityConfiguration(@Import)
+   - ClientDetailsServiceConfiguration(@Import)
+     - ClientDetailsServiceConfigurer (new)
+     - ClientDetailsService
+   - AuthorizationServerEndpointsConfiguration(@Import)
+ - AuthorizationServerEndpointsConfiguration(@Import)
+   - TokenKeyEndpointRegistrar(@import) 
 
-HandlerMapping 详解
-https://www.cnblogs.com/dragonfei/p/6148625.html
+### AuthorizationServerEndpointsConfiguration 类
+  - AuthorizationEndpoint
+  - TokenEndpoint
+  - CheckTokenEndpoint
+  - WhitelabelApprovalEndpoint
+  - WhitelabelErrorEndpoint
+  - FrameworkEndpointHandlerMapping(继承于RequestMappingHandlerMapping)
+  - FactoryBean<ConsumerTokenServices>
+  - FactoryBean<AuthorizationServerTokenServices>
+  - TokenKeyEndpointRegistrar
 
-Spring自定义RequestMappingHandlerMapping避免PathVariable的性能低下
-https://www.jianshu.com/p/5574cb427140
-
-springmvc RequestMappingHandlerMapping初始化详解
-https://www.cnblogs.com/BINGJJFLY/p/7452717.html
-
-如何实例化requestmappinghandlermapping类
-https://zhidao.baidu.com/question/372438141876783604.html
+### AuthorizationServerEndpointsConfigurer 
+  - getDefaultTokenGranters() 生成了/oauth/token grant_type的处理类
+    - AuthorizationCodeTokenGranter （grant_type=code)
+    - RefreshTokenGranter (grant_type=refresh)
+    - ImplicitTokenGranter (grant_type=Implicit)
+    - ClientCredentialsTokenGranter (grant_type=client_credentials)
+    - ResourceOwnerPasswordTokenGranter (grant_type=password)
+  - 
 
 Dillinger is a cloud-enabled, mobile-ready, offline-storage, AngularJS powered HTML5 Markdown editor.
 
