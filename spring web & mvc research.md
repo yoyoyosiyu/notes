@@ -81,6 +81,8 @@ MyWebApp.war!
        classes
 ```
 
+在任何Listener的事件被触发之前，当应用正在启动时，ServletContainerInitializer的onStartup方法将被调用。
+
 除此之外容器还会将所有实现了@HandlesTypes注解所指定的接口类的实现类或者衍生类的实例通过onStartup方法的第一个参数传递给onStartup方式处理。Spring-Web所指定的接口类
 是WebApplicationInitializer(org/springframework/web/WebApplicationInitializer.java)
 
@@ -157,6 +159,51 @@ AbstractDispatcherServletInitializer继承自AbstractContextLoaderInitializer，
             AbstractDispatcherServletInitializer
                 AbstractAnnotationConfigDispatcherServletInitializer
 ```
+
+AbstractDispatcherServletInitializer和AbstractAnnotationConfigDispatcherServletInitializer我们留待解析Spring-MVC的时候研究。这里我们要看看AbstractContextLoaderInitializer做了什么？
+
+AbstractContextLoaderInitializer做的工作很简单，注册一个监听器ContextLoaderListener。
+ContextLoaderListener实现了标准的监听器接口ServletContextListener，并且扩展自ContextLoader。大部分的工作有ContextLoader来由实现，ContextLoaderListener像一个粘合剂，将ContextLoader和ServletContextListenern粘合在一起：
+```java
+org/springframework/web/context/ContextLoaderListener.java
+public class ContextLoaderListener extends ContextLoader implements ServletContextListener {
+
+	
+	public ContextLoaderListener() {
+	}
+
+	public ContextLoaderListener(WebApplicationContext context) {
+		super(context);
+	}
+
+	@Override
+	public void contextInitialized(ServletContextEvent event) {
+		initWebApplicationContext(event.getServletContext());
+	}
+
+	@Override
+	public void contextDestroyed(ServletContextEvent event) {
+		closeWebApplicationContext(event.getServletContext());
+		ContextCleanupListener.cleanupAttributes(event.getServletContext());
+	}
+}
+```
+其中initWebApplicationContext和closeWebApplicationContext都在ContextLoader中实现
+```java
+org/springframework/web/context/ContextLoader.java
+public class ContextLoader {
+
+    public WebApplicationContext initWebApplicationContext(ServletContext servletContext) {
+    
+        // 只列了两行关键的代码
+        this.context = createWebApplicationContext(servletContext);
+        configureAndRefreshWebApplicationContext(cwac, servletContext);
+    
+    }
+
+}
+```
+
 
 
 
