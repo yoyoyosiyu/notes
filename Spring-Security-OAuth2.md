@@ -7,41 +7,41 @@
 @EnableOAuth2Client Import了OAuth2ClientConfiguration， OAuth2ClientConfiguration是个配置类
 
 ```java
+@Configuration  
+public class OAuth2ClientConfiguration {  
+
+	@Bean  
+	public OAuth2ClientContextFilter oauth2ClientContextFilter() {  
+		OAuth2ClientContextFilter filter = new OAuth2ClientContextFilter();  
+		return filter;  
+	}  
+
+	@Bean  
+	@Scope(value = "request", proxyMode = ScopedProxyMode.INTERFACES)  
+	protected AccessTokenRequest accessTokenRequest(@Value("#{request.parameterMap}")  
+	Map<String, String[]> parameters, @Value("#{request.getAttribute('currentUri')}")  
+	String currentUri) {  
+		DefaultAccessTokenRequest request = new DefaultAccessTokenRequest(parameters);  
+		request.setCurrentUri(currentUri);
+		return request;  
+	}  
+	  
 	@Configuration  
-	public class OAuth2ClientConfiguration {  
-
+	protected static class OAuth2ClientContextConfiguration {  
+	     
+		@Resource  
+		@Qualifier("accessTokenRequest")  
+		private AccessTokenRequest accessTokenRequest;  
 		@Bean  
-		public OAuth2ClientContextFilter oauth2ClientContextFilter() {  
-			OAuth2ClientContextFilter filter = new OAuth2ClientContextFilter();  
-			return filter;  
-		}  
+		@Scope(value = "session", proxyMode = ScopedProxyMode.INTERFACES)  
+		public OAuth2ClientContext oauth2ClientContext() {  
+		   return new DefaultOAuth2ClientContext(accessTokenRequest);  
+		}
+	}  
 
-		@Bean  
-		@Scope(value = "request", proxyMode = ScopedProxyMode.INTERFACES)  
-		protected AccessTokenRequest accessTokenRequest(@Value("#{request.parameterMap}")  
-		Map<String, String[]> parameters, @Value("#{request.getAttribute('currentUri')}")  
-		String currentUri) {  
-			DefaultAccessTokenRequest request = new DefaultAccessTokenRequest(parameters);  
-			request.setCurrentUri(currentUri);
-			return request;  
-		}  
-		  
-		@Configuration  
-		protected static class OAuth2ClientContextConfiguration {  
-		     
-			@Resource  
-			@Qualifier("accessTokenRequest")  
-			private AccessTokenRequest accessTokenRequest;  
-			@Bean  
-			@Scope(value = "session", proxyMode = ScopedProxyMode.INTERFACES)  
-			public OAuth2ClientContext oauth2ClientContext() {  
-			   return new DefaultOAuth2ClientContext(accessTokenRequest);  
-			}
-		}  
-
-	}
+}
 ```
 
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE5ODgyNzc0MjFdfQ==
+eyJoaXN0b3J5IjpbMTQ5NDk5NjMwN119
 -->
