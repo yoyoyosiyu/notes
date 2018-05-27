@@ -243,7 +243,7 @@ protected OAuth2AccessToken acquireAccessToken(OAuth2ClientContext oauth2Context
 	}  
 
 	OAuth2AccessToken accessToken = null;  
-	accessToken = accessTokenProvider.obtainAccessToken(resource, accessTokenRequest);  
+	accessToken = accessTokenProvider.obtainAccessToken(resource, accessTokenRequest); [1] 
 	if (accessToken == null || accessToken.getValue() == null) {  
 		throw new IllegalStateException(  
 		"Access token provider returned a null access token, which is illegal according to the contract.");  
@@ -252,6 +252,162 @@ protected OAuth2AccessToken acquireAccessToken(OAuth2ClientContext oauth2Context
 	return accessToken;  
 }
 ```
+一开始的时候还没有StateKey，这个SateKey是随机产生的一个字符串，如果稍微了解AuthorizationCode（授权码模式）的话，就知道当网站跳转到授权服务器网页的时候都会传过去一个state参数，当授权网站完成授权跳回请求授权的网站的时候，那么这个state参数的数值会原封不动的传回。我们知道HTTP是一个无状态的协议，当跳转到授权网站之后，然后再跳回来之后，请求授权的网站可以通过这个参数来判断是哪一次的请求，有点类似于会话标识符一样的意思，同时也可以判断这个会跳的授权是不是自己发出的。
+
+[1] 通过AccessTokenProvider 调用obtainAccessToken来获取访问令牌(AccessToken)。这里的AccessTokenProvider 是
+AuthorizationCodeAccessTokenProvider。（这里留下待解问题，为什么是AuthorizationCodeAccessTokenProvider？）
+
+AuthorizationCodeAccessTokenProvider.java
+```java
+public OAuth2AccessToken obtainAccessToken(OAuth2ProtectedResourceDetails details, AccessTokenRequest request)  
+      throws UserRedirectRequiredException, UserApprovalRequiredException, AccessDeniedException,  
+  OAuth2AccessDeniedException {  
+  
+	AuthorizationCodeResourceDetails resource = (AuthorizationCodeResourceDetails) details;  
+
+	if (request.getAuthorizationCode() == null) {  
+		if (request.getStateKey() == null) {  
+			throw getRedirectForAuthorization(resource, request);  [1]
+		}  
+		obtainAuthorizationCode(resource, request); [2] 
+	}  
+	return retrieveToken(request, resource, getParametersForTokenRequest(resource, request),  
+	getHeadersForTokenRequest(request)); [3]
+
+}
+```
+这里会产生分支，如果没有授权码，也没有StateKey的话，那么将会通过抛出异常的方式去获取授权码[1]，如果没有授权码，但是有statekey的话，那么通过obtainAuthorizationCode获取授权码[2]，如果已经有授权码，那么通过retrieveToken来获取访问令牌[3]。
+
+obtainAuthorizationCode是个非常有意思的方法，很值得研究。它是通过RestTemplate发送POST请求去获取授权码（AuthorizationCode），而不是通过网页跳转的方式，当然如果失败的话，它还是会回退到网页跳转的方式。由于代码太长，我们放到后面去研究。
+
+一开始我们没有授权码，也没有StateKey，所以会执行[1]。接下来我们看看getRedirectForAuthorization会抛出什么的异常。
+
+AuthorizationCodeAccessTokenProvider.java
+```java
+private UserRedirectRequiredException getRedirectForAuthorization(AuthorizationCodeResourceDetails resource,  
+  AccessTokenRequest request) {  
+  
+	// we don't have an authorization code yet. So first get that.  
+	TreeMap<String, String> requestParameters = new TreeMap<String, String>();  
+	requestParameters.put("response_type", "code"); // oauth2 spec, section 3  
+	requestParameters.put("client_id", resource.getClientId());  
+	// Client secret is not required in the initial authorization request  
+
+	String redirectUri = resource.getRedirectUri(request);  
+	if (redirectUri != null) {  
+		requestParameters.put("redirect_uri", redirectUri);  
+	}  
+
+	if (resource.isScoped()) {  
+
+		StringBuilder builder = new StringBuilder();  
+		List<String> scope = resource.getScope();  
+
+		if (scope != null) {  
+			Iterator<String> scopeIt = scope.iterator();  
+			while (scopeIt.hasNext()) {  
+				builder.append(scopeIt.next());  
+				if (scopeIt.hasNext()) {  
+					builder.append(' ');  
+				}  
+			}  
+		}  
+
+		requestParameters.put("scope", builder.toString());  
+	}  
+
+	UserRedirectRequiredException redirectException = new UserRedirectRequiredException(  
+	resource.getUserAuthorizationUri(), requestParameters);  [1]
+
+	String stateKey = stateKeyGenerator.generateKey(resource);  [2]
+	redirectException.setStateKey(stateKey);  [3]
+	request.setStateKey(stateKey);  
+	redirectException.setStateToPreserve(redirectUri);  
+	request.setPreservedState(redirectUri);  
+
+	return redirectException;  
+  
+}
+```
+
+[1] 首先是构建了重定向所需要的请求参数：response_type、client_id、redirect_uri、state， 然后创建一个UserRedirectRequiredException 异常对象，并且把请求参数交给它。
+
+[2] 这时候创建StateKey
+
+[3] 同时将StateKey和PreservedState设置给AccessTokenRequest和UserRedirectRequiredException 异常。PreservedState的值就是redirectUri
+
+异常被抛出后，我们再沿着调用栈往外追索，看看UserRedirectRequiredException 的异常将会再哪里被捕获并且被处理。
+
+第一次捕获在OAuth2RestTemplate的getAccessToken方法
+```java
+public OAuth2AccessToken getAccessToken() throws UserRedirectRequiredException {  
+
+	// 从Context中获取AccessToken
+	OAuth2AccessToken accessToken = context.getAccessToken();  [1]
+
+	// 如果没有AccessToken，或者AccessToken已经过期
+	if (accessToken == null || accessToken.isExpired()) {  
+		try {  
+			accessToken = acquireAccessToken(context);  [2]
+		}  
+		catch (UserRedirectRequiredException e) {  
+			context.setAccessToken(null); // No point hanging onto it now  
+			accessToken = null;  
+			String stateKey = e.getStateKey();  
+			if (stateKey != null) {  
+				Object stateToPreserve = e.getStateToPreserve();  
+				if (stateToPreserve == null) {  
+					stateToPreserve = "NONE";  
+				}  
+				context.setPreservedState(stateKey, stateToPreserve);  
+			}  
+			throw e;  
+		}  
+	}  
+	return accessToken;  
+}
+```
+这里比较关键的就是它会将stateKey和statePreserve存入context（OAuth2ClientContext ），然后继续抛出。
+
+我们再沿着调用栈往外走，看看在哪里会被捕获？
+
+我一开始也没有找到，因为我的注意力只是集中在OAuth2ClientAuthenticationProcessingFilter这个过滤器上，我用F8键跟着代码的执行，最后终于发现了踪迹。它就在OAuth2ClientContextFilter的doFilter上。
+
+OAuth2ClientContextFilter.java
+```java
+public void doFilter(ServletRequest servletRequest,  
+  ServletResponse servletResponse, FilterChain chain)  
+      throws IOException, ServletException {  
+	HttpServletRequest request = (HttpServletRequest) servletRequest;  
+	HttpServletResponse response = (HttpServletResponse) servletResponse;  
+	request.setAttribute(CURRENT_URI, calculateCurrentUri(request));  
+
+	try {  
+		chain.doFilter(servletRequest, servletResponse);  
+	} catch (IOException ex) {  
+		throw ex;  
+	} catch (Exception ex) {  
+		// Try to extract a SpringSecurityException from the stacktrace  
+		Throwable[] causeChain = throwableAnalyzer.determineCauseChain(ex);  
+		UserRedirectRequiredException redirect = (UserRedirectRequiredException) throwableAnalyzer  
+		.getFirstThrowableOfType(UserRedirectRequiredException.class, causeChain);  
+		if (redirect != null) {  
+			redirectUser(redirect, request, response);  
+		} else {  
+			if (ex instanceof ServletException) {  
+				throw (ServletException) ex;  
+			}  
+			if (ex instanceof RuntimeException) {  
+				throw (RuntimeException) ex;  
+			}  
+			throw new NestedServletException("Unhandled exception", ex);  
+		}  
+	}  
+}
+```
+回到本篇文章的最开始，我们已经知道OAuth2ClientContextFilter是OAuth2ClientConfiguration配置类声明的Bean。至于它在哪里被加入到过滤器链的，这里还没有去研究。
+
+它的作用很明显，如果发现UserRedirectRequiredException，那么重定向到授权网站
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE4OTAxNzA5OTZdfQ==
+eyJoaXN0b3J5IjpbLTE3ODM2NDE1NjFdfQ==
 -->
