@@ -504,5 +504,5 @@ public ClientCredentialsResourceDetails oauth2RemoteResource() {
 ```
 要注意的是@ConfigurationProperties，它会将application.properties或者application.yml配置文件中security.oauth2.client下的配置信息设置到ClientCredentialsResourceDetails对应的属性中。
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMjExMTAwNjI4NywxNjQwMjkwNDM0XX0=
+eyJoaXN0b3J5IjpbMjExMTAwNjI4N119
 -->
