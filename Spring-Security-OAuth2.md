@@ -147,8 +147,20 @@ protected void configure(HttpSecurity http) throws Exception {
 
 #### SsoSecurityConfigurer
 
+```java
+
+```
+
 SsoSecurityConfigurer完成了几件事
 
+- 通过DefaultUserInfoRestTemplateFactory注册OAuth2RestTemplate
+	- DefaultUserInfoRestTemplateFactory 同时注册
+		- AuthorizationCodeResourceDetails
+		- AuthorizationCodeAccessTokenProvider
+			- DefaultStateKeyGenerator
+			- DefaultRequestEnhancer
+		-  d
+- DefaultTokenServices 
 - 注册OAuth2ClientAuthenticationProcessingFilter过滤器
 - 添加异常的defaultAuthenticationEntryPointFor
 
@@ -409,7 +421,9 @@ public void doFilter(ServletRequest servletRequest,
 
 
 #### OAuth2ClientContextFilter
-它的主要作用就是处理UserRedirectRequiredException，重定向到授权网站。
+它的主要作用就是处理至于它在哪里被加入到过滤器链的，这里还没有去研究。
+
+它的作用很明显，如果发现UserRedirectRequiredException，那么重定向到授权网站。
 
 如果不使用Spring Boot的话，那么只能使用EnableOAuth2Client，而不能使用EnableOAuth2Ssso，因为EnableOAuth2Sso是spring-security-oauth2-autoconfigure中定义的，spring-security-oauth2-autoconfigure的自动配置必须要使用到Spring Boot的自动配置机制。
 
@@ -504,5 +518,5 @@ public ClientCredentialsResourceDetails oauth2RemoteResource() {
 ```
 要注意的是@ConfigurationProperties，它会将application.properties或者application.yml配置文件中security.oauth2.client下的配置信息设置到ClientCredentialsResourceDetails对应的属性中。
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMjExMTAwNjI4N119
+eyJoaXN0b3J5IjpbLTc2ODc2NzAxMCwyMTExMDA2Mjg3XX0=
 -->
